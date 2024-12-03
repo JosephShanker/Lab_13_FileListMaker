@@ -1,0 +1,191 @@
+import java.io.*;
+import java.nio.file.*;
+import java.util.ArrayList;
+
+public class Lab_13_FileListMaker {
+    private static ArrayList<String> list = new ArrayList<>();
+    private static boolean needsToBeSaved = false;
+    private static String currentFileName = null;
+
+    public static void main(String[] args) {
+        boolean running = true;
+
+        while (running) {
+            try {
+                displayMenu();
+                String command = SafeInput.getRegExString("Enter command: ", "[AaDdIiMmOoSsCcVvQq]").toUpperCase();
+
+                switch (command) {
+                    case "A": addItem(); break;
+
+                    case "D": deleteItem(); break;
+
+                    case "I": insertItem(); break;
+
+                    case "M": moveItem(); break;
+
+                    case "O": loadFile(); break;
+
+                    case "S": saveFile(); break;
+
+                    case "C": clearList(); break;
+
+                    case "V": viewList(); break;
+
+                    case "Q": running = quitProgram(); break;
+                }
+            } catch (Exception e) {
+                System.out.println("Error: " + e.getMessage());
+            }
+        }
+    }
+
+    private static void displayMenu() {
+        System.out.println("\nCurrent List:");
+        for (int i = 0; i < list.size(); i++) {
+            System.out.printf("%d: %s\n", i + 1, list.get(i));
+        }
+        System.out.println("\nMenu:");
+        System.out.println("A - Add item");
+
+        System.out.println("D - Delete item");
+
+        System.out.println("I - Insert item");
+
+        System.out.println("M - Move item");
+
+        System.out.println("O - Open a list file");
+
+        System.out.println("S - Save the current list file");
+
+        System.out.println("C - Clear the list");
+
+        System.out.println("V - View the list");
+
+        System.out.println("Q - Quit the program");
+        System.out.println(needsToBeSaved ? "* Unsaved changes" : "");
+    }
+
+    private static void addItem() {
+        String item = SafeInput.getRegExString("Enter an item to add: ", ".+");
+
+        list.add(item);
+        needsToBeSaved = true;
+        System.out.println("Item added.");
+    }
+
+    private static void deleteItem() {
+        if (list.isEmpty()) {
+            System.out.println("The list is empty.");
+            return;
+        }
+        int itemIndex = SafeInput.getRangedInt("Enter item number to delete: ", 1, list.size()) - 1;
+
+        list.remove(itemIndex);
+        needsToBeSaved = true;
+        System.out.println("Item deleted.");
+    }
+
+    private static void insertItem() {
+        if (list.isEmpty()) {
+            System.out.println("The list is empty. Adding item to the end.");
+            addItem();
+            return;
+        }
+        int position = SafeInput.getRangedInt("Enter position to insert the item at: ", 1, list.size() + 1) - 1;
+        String item = SafeInput.getRegExString("Enter an item to insert: ", ".+");
+
+        list.add(position, item);
+        needsToBeSaved = true;
+        System.out.println("Item inserted.");
+    }
+
+    private static void moveItem() {
+        if (list.isEmpty()) {
+            System.out.println("The list is empty.");
+            return;
+        }
+        int fromIndex = SafeInput.getRangedInt("Enter the item number to move: ", 1, list.size()) - 1;
+        int toIndex = SafeInput.getRangedInt("Enter the position to move the item to: ", 1, list.size() + 1) - 1;
+
+        String item = list.remove(fromIndex);
+        list.add(toIndex, item);
+        needsToBeSaved = true;
+        System.out.println("Item moved.");
+    }
+
+    private static void loadFile() throws IOException {
+        if (needsToBeSaved && !confirmSaveOnAction("load a new file")) {
+            return;
+        }
+        String fileName = SafeInput.getRegExString("Enter the file name to open (without .txt): ", ".+");
+        Path path = Paths.get(fileName + ".txt");
+        if (!Files.exists(path)) {
+            System.out.println("File not found.");
+            return;
+        }
+        list.clear();
+        list.addAll(Files.readAllLines(path));
+        currentFileName = fileName;
+        needsToBeSaved = false;
+        System.out.println("File loaded.");
+    }
+
+    private static void saveFile() throws IOException {
+        if (list.isEmpty()) {
+            System.out.println("The list is empty. Nothing to save.");
+            return;
+        }
+        if (currentFileName == null) {
+            currentFileName = SafeInput.getRegExString("Enter the file name to save (without .txt): ", ".+");
+        }
+        saveToFile(currentFileName);
+        System.out.println("List saved.");
+    }
+
+    private static void clearList() {
+        if (needsToBeSaved && !confirmSaveOnAction("clear the list")) {
+            return;
+        }
+        list.clear();
+        needsToBeSaved = false;
+        System.out.println("List cleared.");
+    }
+
+    private static void viewList() {
+        if (list.isEmpty()) {
+            System.out.println("The list is currently empty.");
+        } else {
+            System.out.println("Current list:");
+            for (int i = 0; i < list.size(); i++) {
+                System.out.printf("%d: %s\n", i + 1, list.get(i));
+            }
+        }
+    }
+
+    private static boolean quitProgram() {
+        if (needsToBeSaved && !confirmSaveOnAction("quit the program")) {
+            return true;
+        }
+        System.out.println("Goodbye!");
+        return false;
+    }
+
+    private static boolean confirmSaveOnAction(String action) {
+        if (SafeInput.getYNConfirm("Unsaved changes detected. Do you want to save before you " + action + "?")) {
+            try {
+                saveFile();
+            } catch (IOException e) {
+                System.out.println("Error saving file: " + e.getMessage());
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static void saveToFile(String fileName) throws IOException {
+        Path path = Paths.get(fileName + ".txt");
+        Files.write(path, list);
+        needsToBeSaved = false;
+    }
+}
